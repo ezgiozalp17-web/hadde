@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hadde Ton Hesap (3102)</title>
+  <style>
+    :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+    body{margin:0;background:#f6f7fb;color:#111}
+    header{padding:16px 16px 10px}
+    h1{font-size:18px;margin:0 0 6px}
+    .sub{font-size:12px;opacity:.75}
+    .wrap{padding:0 16px 16px;max-width:760px;margin:0 auto}
+    .card{background:#fff;border:1px solid #e6e7ee;border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+    label{display:block;font-size:12px;opacity:.8;margin:10px 0 6px}
+    select,input{width:100%;padding:12px;border:1px solid #d8dbe6;border-radius:12px;font-size:16px;background:#fff}
+    .row{display:grid;grid-template-columns:1fr;gap:10px}
+    @media(min-width:620px){.row{grid-template-columns:1fr 1fr}}
+    .kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    .box{border:1px solid #eef0f7;border-radius:12px;padding:10px;background:#fbfcff}
+    .box .t{font-size:12px;opacity:.75}
+    .box .v{font-size:20px;font-weight:700;margin-top:4px}
+    .hint{font-size:12px;opacity:.75;line-height:1.35}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    button{border:0;border-radius:12px;padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer}
+    .pri{background:#111;color:#fff}
+    .sec{background:#eef0f7}
+    .table{width:100%;border-collapse:collapse;font-size:13px}
+    .table th,.table td{padding:8px;border-bottom:1px solid #eef0f7;text-align:left}
+    .tag{display:inline-block;font-size:12px;padding:4px 8px;border-radius:999px;background:#eef0f7;margin-left:6px}
+    .ok{color:#0a7a2f;font-weight:700}
+    .warn{color:#b45309;font-weight:700}
+    .foot{font-size:12px;opacity:.7;margin-top:8px}
+  </style>
+</head>
+<body>
+<header class="wrap">
+  <h1>Hadde Ton Hesaplayıcı <span class="tag">3102 Alaşım</span></h1>
+  <div class="sub">Kaynak: gönderdiğin “Hadde Makinası Aylık Ortalama Geçen Süreler / Çalışma Düzeni” tablosu.</div>
+</header>
+
+<div class="wrap">
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Çalışma Düzeni</label>
+        <select id="mode">
+          <option value="normal">Normal Çalışma Düzeninde</option>
+          <option value="tatil">Tatil İptal Çalışma Düzeninde</option>
+          <option value="iyilesik">Tatil İptal + Arıza 2 Gün İyileştirilirse</option>
+        </select>
+      </div>
+      <div>
+        <label>Kalınlık (mm) — örn: 0.30</label>
+        <input id="thk" inputmode="decimal" placeholder="0.30" />
+        <div class="hint" style="margin-top:6px">
+          Kalınlığı girince sistem otomatik olarak <b>pas</b> ve <b>kalınlık aralığını</b> seçer.
+          İstersen alttan manuel de değiştirebilirsin.
+        </div>
+      </div>
+    </div>
+
+    <label>Otomatik Seçilen Aralık / Pas</label>
+    <select id="rangeSelect"></select>
+
+    <div class="kpi">
+      <div class="box">
+        <div class="t">Günlük Pas Sayısı</div>
+        <div class="v" id="k_pasGun">—</div>
+      </div>
+      <div class="box">
+        <div class="t">Seçilen Pas</div>
+        <div class="v" id="k_pasNo">—</div>
+      </div>
+      <div class="box">
+        <div class="t">Total Ürün (Gün/Ton)</div>
+        <div class="v" id="k_totalGunTon">—</div>
+        <div class="hint">Tablodaki “TOTAL ÜRÜN Gün/Ton” değeri.</div>
+      </div>
+      <div class="box">
+        <div class="t">Finish (Gün/Ton)</div>
+        <div class="v" id="k_finishGunTon">—</div>
+        <div class="hint">Tablodaki “FINISH Gün/Ton” değeri.</div>
+      </div>
+      <div class="box">
+        <div class="t">Finish (Ay/Ton)</div>
+        <div class="v" id="k_finishAyTon">—</div>
+        <div class="hint">Tablodaki “FINISH Ay/Ton” değeri.</div>
+      </div>
+      <div class="box">
+        <div class="t">Durum</div>
+        <div class="v" id="k_status">—</div>
+        <div class="hint" id="k_statusHint">—</div>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="pri" id="copyBtn">Sonucu Kopyala</button>
+      <button class="sec" id="resetBtn">Sıfırla</button>
+    </div>
+
+    <div class="foot">Not: Sayılar tabloya birebir girilmiştir. Aralıklar: 6,18–3,50 / 3,50–2,30 / … / 0,21–0,14</div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:15px;margin:0 0 8px">Aylık Hedeflenen Finish Ürün (tablodan)</h2>
+    <table class="table" id="targetTable">
+      <thead>
+        <tr>
+          <th>Kalınlık</th>
+          <th>Ton</th>
+          <th>Gün</th>
+          <th>Pas</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="hint">Bu bölüm “Aylık hedeflenen finish ürün” satırlarından geliyor.</div>
+  </div>
+
+</div>
+
+<script>
+  // === TABLODAN OKUNAN VERİLER (3102) ===
+  // Her satır: [pasNo, upper, lower, gunlukPasSayisi, totalGunTon, finishGunTon, finishAyTon]
+  const DATA = {
+    normal: [
+      [1, 6.18, 3.50, 70, 665, 532, 15960],
+      [2, 3.50, 2.30, 55, 261, 209, 6270],
+      [3, 2.30, 1.50, 36, 114,  91, 2736],
+      [4, 1.50, 0.85, 41,  97,  78, 2337],
+      [5, 0.85, 0.50, 39,  74,  59, 1778],
+      [6, 0.50, 0.35, 36,  57,  46, 1368],
+      [7, 0.35, 0.21, 30,  41,  33,  977],
+      [8, 0.21, 0.14, 20,  24,  19,  570],
+    ],
+    tatil: [
+      [1, 6.18, 3.50, 88, 831, 665, 19950],
+      [2, 3.50, 2.30, 69, 327, 261,  7838],
+      [3, 2.30, 1.50, 45, 143, 114,  3420],
+      [4, 1.50, 0.85, 51, 122,  97,  2921],
+      [5, 0.85, 0.50, 49,  93,  74,  2223],
+      [6, 0.50, 0.35, 45,  71,  57,  1710],
+      [7, 0.35, 0.21, 38,  51,  41,  1221],
+      [8, 0.21, 0.14, 25,  30,  24,   713],
+    ],
+    iyilesik: [
+      [1, 6.18, 3.50, 95, 904, 724, 21706],
+      [2, 3.50, 2.30, 75, 355, 284,  8527],
+      [3, 2.30, 1.50, 49, 155, 124,  3721],
+      [4, 1.50, 0.85, 56, 132, 106,  3178],
+      [5, 0.85, 0.50, 53, 101,  81,  2419],
+      [6, 0.50, 0.35, 49,  78,  62,  1860],
+      [7, 0.35, 0.21, 41,  55,  44,  1329],
+      [8, 0.21, 0.14, 27,  32,  26,   775],
+    ],
+  };
+
+  const TARGETS = {
+    normal: [
+      {thk: "0,16 mm", ton: 200, gun: "10,50", pas: "8 PAS"},
+      {thk: "0,30 mm", ton: 400, gun: "12,00", pas: "7 PAS"},
+      {thk: "1,00 mm", ton: 585, gun: "7,50",  pas: "4 PAS"},
+    ],
+    tatil: [
+      {thk: "0,16 mm", ton: 200,  gun: "8,30",  pas: "8 PAS"},
+      {thk: "0,30 mm", ton: 400,  gun: "9,75",  pas: "7 PAS"},
+      {thk: "1,00 mm", ton: 1160, gun: "11,95", pas: "4 PAS"},
+    ],
+    iyilesik: [
+      {thk: "0,16 mm", ton: 200,  gun: "7,70",  pas: "8 PAS"},
+      {thk: "0,30 mm", ton: 400,  gun: "9,00",  pas: "7 PAS"},
+      {thk: "1,00 mm", ton: 1410, gun: "13,30", pas: "4 PAS"},
+    ],
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  function fmtNum(n){
+    if (n === null || n === undefined) return "—";
+    // Türkçe binlik ayırıcı için basit format
+    return Number(n).toLocaleString("tr-TR");
+  }
+
+  function parseThk(v){
+    if (!v) return null;
+    // 0,30 veya 0.30 kabul et
+    const t = v.toString().trim().replace(",", ".");
+    const num = Number(t);
+    return Number.isFinite(num) ? num : null;
+  }
+
+  function buildRangeOptions(mode){
+    const sel = $("rangeSelect");
+    sel.innerHTML = "";
+    DATA[mode].forEach(row=>{
+      const [pas, upper, lower] = row;
+      const opt = document.createElement("option");
+      opt.value = String(pas);
+      opt.textContent = ${pas} PAS — ${upper.toString().replace(".",",")}–${lower.toString().replace(".",",")} mm;
+      sel.appendChild(opt);
+    });
+  }
+
+  function findPasByThickness(mode, thk){
+    if (thk === null) return null;
+    // Aralıklar üstten alta: upper >= thk > lower (son aralıkta lower dahil)
+    for (const row of DATA[mode]){
+      const [pas, upper, lower] = row;
+      const isLast = (pas === 8);
+      if ((thk <= upper && thk > lower) || (isLast && thk <= upper && thk >= lower)){
+        return pas;
+      }
+    }
+    return null;
+  }
+
+  function getRowByPas(mode, pas){
+    return DATA[mode].find(r => r[0] === pas) || null;
+  }
+
+  function updateTargets(mode){
+    const tbody = $("targetTable").querySelector("tbody");
+    tbody.innerHTML = "";
+    TARGETS[mode].forEach(r=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = <td>${r.thk}</td><td>${fmtNum(r.ton)}</td><td>${r.gun}</td><td>${r.pas}</td>;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function updateKpis(){
+    const mode = $("mode").value;
+    const thk = parseThk($("thk").value);
+
+    // otomatik pas
+    const autoPas = findPasByThickness(mode, thk);
+
+    // kullanıcı select'i değiştirdiyse onu kullan; ama thk girdiyse otomatik seç
+    if (autoPas !== null){
+      $("rangeSelect").value = String(autoPas);
+    }
+    const chosenPas = Number($("rangeSelect").value);
+
+    const row = getRowByPas(mode, chosenPas);
+    if (!row){
+      ["k_pasGun","k_pasNo","k_totalGunTon","k_finishGunTon","k_finishAyTon","k_status","k_statusHint"]
+        .forEach(id => $(id).textContent = "—");
+      return;
+    }
+
+    const [pasNo, upper, lower, gunlukPas, totalGunTon, finishGunTon, finishAyTon] = row;
+
+    $("k_pasGun").textContent = fmtNum(gunlukPas);
+    $("k_pasNo").textContent  = ${pasNo} PAS;
+    $("k_totalGunTon").textContent = fmtNum(totalGunTon);
+    $("k_finishGunTon").textContent = fmtNum(finishGunTon);
+    $("k_finishAyTon").textContent = fmtNum(finishAyTon);
+
+    // durum mesajı (kalınlık aralığına uyuyor mu?)
+    const rangeText = ${upper.toString().replace(".",",")}–${lower.toString().replace(".",",")} mm;
+    if (thk === null){
+      $("k_status").textContent = "Kalınlık girilmedi";
+      $("k_status").className = "v warn";
+      $("k_statusHint").textContent = Manuel seçim: ${rangeText};
+    } else {
+      const ok = findPasByThickness(mode, thk) === pasNo;
+      $("k_status").textContent = ok ? "Aralık Uygun" : "Manuel Seçim";
+      $("k_status").className = ok ? "v ok" : "v warn";
+      $("k_statusHint").textContent = ok
+        ? Kalınlık ${thk.toString().replace(".",",")} mm → ${rangeText}
+        : Kalınlık ${thk.toString().replace(".",",")} mm, ama sen ${rangeText} seçtin.;
+    }
+  }
+
+  function updateAll(){
+    const mode = $("mode").value;
+    buildRangeOptions(mode);
+    updateTargets(mode);
+    updateKpis();
+  }
+
+  $("mode").addEventListener("change", updateAll);
+  $("thk").addEventListener("input", updateKpis);
+  $("rangeSelect").addEventListener("change", updateKpis);
+
+  $("copyBtn").addEventListener("click", async ()=>{
+    const modeLabel = $("mode").selectedOptions[0].textContent;
+    const thk = $("thk").value || "—";
+    const text =
+`Hadde Ton Hesap (3102)
+Çalışma: ${modeLabel}
+Kalınlık: ${thk} mm
+Seçilen: ${$("k_pasNo").textContent} | Günlük pas: ${$("k_pasGun").textContent}
+Total (Gün/Ton): ${$("k_totalGunTon").textContent}
+Finish (Gün/Ton): ${$("k_finishGunTon").textContent}
+Finish (Ay/Ton): ${$("k_finishAyTon").textContent}`;
+    try{
+      await navigator.clipboard.writeText(text);
+      alert("Kopyalandı ✅");
+    }catch(e){
+      prompt("Kopyalamak için seçip kopyala:", text);
+    }
+  });
+
+  $("resetBtn").addEventListener("click", ()=>{
+    $("thk").value = "";
+    updateKpis();
+  });
+
+  // init
+  updateAll();
+</script>
+</body>
+</html>
