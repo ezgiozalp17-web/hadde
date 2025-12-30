@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hadde Ton Hesap (3102)</title>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial; background:#f6f7fb; margin:0; color:#111}
+    .wrap{max-width:760px;margin:0 auto;padding:16px}
+    .card{background:#fff;border:1px solid #e6e7ee;border-radius:14px;padding:14px;margin:12px 0}
+    label{display:block;font-size:12px;opacity:.8;margin:10px 0 6px}
+    select,input{width:100%;padding:12px;border:1px solid #d8dbe6;border-radius:12px;font-size:16px;background:#fff}
+    .grid{display:grid;grid-template-columns:1fr;gap:10px}
+    @media(min-width:640px){.grid{grid-template-columns:1fr 1fr}}
+    .kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    .box{background:#fbfcff;border:1px solid #eef0f7;border-radius:12px;padding:10px}
+    .t{font-size:12px;opacity:.75}
+    .v{font-size:20px;font-weight:700;margin-top:4px}
+    .hint{font-size:12px;opacity:.7;margin-top:8px;line-height:1.35}
+    button{border:0;border-radius:12px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer}
+    .pri{background:#111;color:#fff}
+    .sec{background:#eef0f7}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:8px;border-bottom:1px solid #eef0f7;text-align:left}
+    .rowbtn{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2 style="margin:0 0 6px">Hadde Ton Hesaplayıcı <span style="font-size:12px;background:#eef0f7;padding:4px 8px;border-radius:999px">3102 Alaşım</span></h2>
+    <div style="font-size:12px;opacity:.75;margin-bottom:10px">Kaynak: gönderdiğin “Hadde Makinası Aylık Ortalama Geçen Süreler / Çalışma Düzeni” tablosu.</div>
+
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label>Çalışma Düzeni</label>
+          <select id="mode">
+            <option value="normal">Normal Çalışma Düzeninde</option>
+            <option value="tatil">Tatil İptal Çalışma Düzeninde</option>
+            <option value="iyilesik">Tatil İptal + Arıza 2 Gün İyileştirilirse</option>
+          </select>
+        </div>
+        <div>
+          <label>Kalınlık (mm) — örn: 0.30</label>
+          <input id="thk" placeholder="0.30" inputmode="decimal">
+        </div>
+      </div>
+
+      <label>Aralık / Pas (otomatik seçilir, istersen değiştir)</label>
+      <select id="rangeSelect"></select>
+
+      <div class="kpi">
+        <div class="box"><div class="t">Günlük Pas Sayısı</div><div class="v" id="pasGun">—</div></div>
+        <div class="box"><div class="t">Seçilen Pas</div><div class="v" id="pasNo">—</div></div>
+        <div class="box"><div class="t">Total Ürün (Gün/Ton)</div><div class="v" id="totalGT">—</div></div>
+        <div class="box"><div class="t">Finish (Gün/Ton)</div><div class="v" id="finishGT">—</div></div>
+        <div class="box"><div class="t">Finish (Ay/Ton)</div><div class="v" id="finishAT">—</div></div>
+        <div class="box"><div class="t">Durum</div><div class="v" id="status">—</div></div>
+      </div>
+
+      <div class="rowbtn">
+        <button class="pri" id="copyBtn">Sonucu Kopyala</button>
+        <button class="sec" id="resetBtn">Sıfırla</button>
+      </div>
+
+      <div class="hint">Not: Aralıklar: 6,18–3,50 / 3,50–2,30 / … / 0,21–0,14</div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 10px;font-size:15px">Aylık Hedeflenen Finish Ürün (tablodan)</h3>
+      <table>
+        <thead><tr><th>Kalınlık</th><th>Ton</th><th>Gün</th><th>Pas</th></tr></thead>
+        <tbody id="targets"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+  const DATA = {
+    normal: [
+      [1, 6.18, 3.50, 70, 665, 532, 15960],
+      [2, 3.50, 2.30, 55, 261, 209,  6270],
+      [3, 2.30, 1.50, 36, 114,  91,  2736],
+      [4, 1.50, 0.85, 41,  97,  78,  2337],
+      [5, 0.85, 0.50, 39,  74,  59,  1778],
+      [6, 0.50, 0.35, 36,  57,  46,  1368],
+      [7, 0.35, 0.21, 30,  41,  33,   977],
+      [8, 0.21, 0.14, 20,  24,  19,   570],
+    ],
+    tatil: [
+      [1, 6.18, 3.50, 88, 831, 665, 19950],
+      [2, 3.50, 2.30, 69, 327, 261,  7838],
+      [3, 2.30, 1.50, 45, 143, 114,  3420],
+      [4, 1.50, 0.85, 51, 122,  97,  2921],
+      [5, 0.85, 0.50, 49,  93,  74,  2223],
+      [6, 0.50, 0.35, 45,  71,  57,  1710],
+      [7, 0.35, 0.21, 38,  51,  41,  1221],
+      [8, 0.21, 0.14, 25,  30,  24,   713],
+    ],
+    iyilesik: [
+      [1, 6.18, 3.50, 95, 904, 724, 21706],
+      [2, 3.50, 2.30, 75, 355, 284,  8527],
+      [3, 2.30, 1.50, 49, 155, 124,  3721],
+      [4, 1.50, 0.85, 56, 132, 106,  3178],
+      [5, 0.85, 0.50, 53, 101,  81,  2419],
+      [6, 0.50, 0.35, 49,  78,  62,  1860],
+      [7, 0.35, 0.21, 41,  55,  44,  1329],
+      [8, 0.21, 0.14, 27,  32,  26,   775],
+    ],
+  };
+
+  const TARGETS = {
+    normal: [
+      ["0,16 mm", 200, "10,50", "8 PAS"],
+      ["0,30 mm", 400, "12,00", "7 PAS"],
+      ["1,00 mm", 585,  "7,50", "4 PAS"],
+    ],
+    tatil: [
+      ["0,16 mm", 200,  "8,30", "8 PAS"],
+      ["0,30 mm", 400,  "9,75", "7 PAS"],
+      ["1,00 mm", 1160, "11,95","4 PAS"],
+    ],
+    iyilesik: [
+      ["0,16 mm", 200,  "7,70", "8 PAS"],
+      ["0,30 mm", 400,  "9,00", "7 PAS"],
+      ["1,00 mm", 1410, "13,30","4 PAS"],
+    ],
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  function parseThk(v){
+    if (!v) return null;
+    const t = String(v).trim().replace(",", ".");
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function buildRangeOptions(mode){
+    const sel = $("rangeSelect");
+    sel.innerHTML = "";
+    DATA[mode].forEach(([pas, upper, lower]) => {
+      const opt = document.createElement("option");
+      opt.value = String(pas);
+      opt.textContent = `${pas} PAS — ${String(upper).replace(".",",")}–${String(lower).replace(".",",")} mm`;
+      sel.appendChild(opt);
+    });
+  }
+
+  function findPasByThickness(mode, thk){
+    if (thk === null) return null;
+    for (const [pas, upper, lower] of DATA[mode]){
+      const last = (pas === 8);
+      if ((thk <= upper && thk > lower) || (last && thk <= upper && thk >= lower)) return pas;
+    }
+    return null;
+  }
+
+  function rowByPas(mode, pas){
+    return DATA[mode].find(r => r[0] === pas) || null;
+  }
+
+  function renderTargets(mode){
+    const tb = $("targets");
+    tb.innerHTML = "";
+    TARGETS[mode].forEach(([k, ton, gun, pas])=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${k}</td><td>${ton.toLocaleString("tr-TR")}</td><td>${gun}</td><td>${pas}</td>`;
+      tb.appendChild(tr);
+    });
+  }
+
+  function updateKpis(){
+    const mode = $("mode").value;
+    const thk = parseThk($("thk").value);
+
+    const autoPas = findPasByThickness(mode, thk);
+    if (autoPas !== null) $("rangeSelect").value = String(autoPas);
+
+    const chosenPas = Number($("rangeSelect").value);
+    const row = rowByPas(mode, chosenPas);
+
+    if (!row){
+      ["pasGun","pasNo","totalGT","finishGT","finishAT","status"].forEach(id => $(id).textContent="—");
+      return;
+    }
+
+    const [pas, upper, lower, gunlukPas, totalGT, finishGT, finishAT] = row;
+
+    $("pasGun").textContent = gunlukPas.toLocaleString("tr-TR");
+    $("pasNo").textContent = pas + " PAS";
+    $("totalGT").textContent = totalGT.toLocaleString("tr-TR");
+    $("finishGT").textContent = finishGT.toLocaleString("tr-TR");
+    $("finishAT").textContent = finishAT.toLocaleString("tr-TR");
+
+    if (thk === null) {
+      $("status").textContent = "Kalınlık girilmedi";
+    } else {
+      const ok = (autoPas === pas);
+      $("status").textContent = ok ? `Uygun (${String(upper).replace(".",",")}–${String(lower).replace(".",",")})` : "Manuel seçim";
+    }
+  }
+
+  function refreshAll(){
+    const mode = $("mode").value;
+    buildRangeOptions(mode);
+    renderTargets(mode);
+    updateKpis();
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    refreshAll();
+    $("mode").addEventListener("change", refreshAll);
+    $("thk").addEventListener("input", updateKpis);
+    $("rangeSelect").addEventListener("change", updateKpis);
+
+    $("resetBtn").addEventListener("click", () => {
+      $("thk").value = "";
+      updateKpis();
+    });
+
+    $("copyBtn").addEventListener("click", async () => {
+      const txt =
+`Hadde Ton Hesap (3102)
+Çalışma: ${$("mode").selectedOptions[0].textContent}
+Kalınlık: ${$("thk").value || "—"} mm
+Seçilen: ${$("pasNo").textContent} | Günlük pas: ${$("pasGun").textContent}
+Total (Gün/Ton): ${$("totalGT").textContent}
+Finish (Gün/Ton): ${$("finishGT").textContent}
+Finish (Ay/Ton): ${$("finishAT").textContent}`;
+      try { await navigator.clipboard.writeText(txt); alert("Kopyalandı ✅"); }
+      catch(e){ prompt("Kopyala:", txt); }
+    });
+  });
+</script>
+</body>
+</html>
